@@ -6,6 +6,7 @@
 #include "TransportImpl.h"
 
 #include <exception>
+#include <string>
 #include <utility>
 
 #include "StreamParserLog.h"
@@ -15,6 +16,14 @@ namespace detail {
 
 namespace {
 constexpr int kWriteFailed = 1;   // on_error code: the OS refused a frame
+
+/* A refused frame is reported by the parser that refused it, but only the link
+   parsers have that callback wired; the encoder does not. State the sizes the
+   transport knows here, so an oversized payload is not just "cannot encode". */
+std::string encode_error_detail(std::size_t payload_size, std::size_t frame_limit) {
+    return "cannot encode a " + std::to_string(payload_size) + "-byte payload; max_frame_bytes is " +
+           std::to_string(frame_limit);
+}
 }  // namespace
 
 TransportBase::TransportBase(TransportConfig cfg, ParserFactory factory, TransportHandler handler)
@@ -174,7 +183,7 @@ bool TransportBase::send(const std::string& tag, const std::vector<uint8_t>& pay
 
     Frame frame = encode(payload);
     if (!frame) {
-        emitError(tag, -2, "cannot encode the payload into a frame");
+        emitError(tag, -2, encode_error_detail(payload.size(), cfg_.max_frame_bytes));
         return false;
     }
 
@@ -204,7 +213,7 @@ bool TransportBase::broadcast(const std::vector<uint8_t>& payload) {
 
     Frame frame = encode(payload);
     if (!frame) {
-        emitError(cfg_.name, -2, "cannot encode the payload into a frame");
+        emitError(cfg_.name, -2, encode_error_detail(payload.size(), cfg_.max_frame_bytes));
         return false;
     }
 
@@ -237,7 +246,7 @@ bool TransportBase::send_to(const std::string& host,
     }
     Frame frame = encode(payload);
     if (!frame) {
-        emitError(cfg_.name, -2, "cannot encode the payload into a frame");
+        emitError(cfg_.name, -2, encode_error_detail(payload.size(), cfg_.max_frame_bytes));
         return false;
     }
     return doSendTo(host, port, frame);
