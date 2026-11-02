@@ -40,10 +40,20 @@ public:
         : StreamParser(tag, timeout_ms, max_frame_size) {}
 
     // Wrap a payload into a complete on-wire frame. Returns an empty vector when
-    // the payload cannot fit into the configured frame budget.
+    // the payload cannot fit into the configured frame budget; the sending side
+    // reports the refusal, this parser does not (see buildFrame below).
     std::vector<std::uint8_t> buildFrame(const std::vector<std::uint8_t> &payload) override {
         std::vector<std::uint8_t> frame;
         if (payload.size() + kOverhead > m_max_frame_size) {
+            /* No reportError() here, unlike A55A55AA. Its buildFrame has a
+               protocol limit of its own (the 16-bit length field) that the
+               transport cannot see; this one only re-checks the very budget the
+               transport handed in as max_frame_bytes, and the transport already
+               reports that as "cannot encode a <n>-byte payload;
+               max_frame_bytes is <m>" (on_error code -2). Reporting here too
+               would only repeat it, and would double-report once a caller uses
+               the adapters' build_and_async_write(), which turns an empty frame
+               into its own "buildFrame returned empty" failure. */
             return frame;
         }
         frame.reserve(payload.size() + kOverhead);
