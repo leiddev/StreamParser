@@ -19,10 +19,15 @@ constexpr int kWriteFailed = 1;   // on_error code: the OS refused a frame
 
 /* A refused frame is reported by the parser that refused it, but only the link
    parsers have that callback wired; the encoder does not. State the sizes the
-   transport knows here, so an oversized payload is not just "cannot encode". */
+   transport knows here, so an oversized payload is not just "cannot encode".
+   The framed result, not the payload, is what has to fit the budget, and the
+   framing costs protocol-defined bytes the transport cannot count: say that,
+   instead of putting the two numbers side by side where "payload 10240,
+   max_frame_bytes 10240" would read like a contradiction. */
 std::string encode_error_detail(std::size_t payload_size, std::size_t frame_limit) {
-    return "cannot encode a " + std::to_string(payload_size) + "-byte payload; max_frame_bytes is " +
-           std::to_string(frame_limit);
+    return "cannot encode a " + std::to_string(payload_size) +
+           "-byte payload: the framed result exceeds max_frame_bytes (" +
+           std::to_string(frame_limit) + ")";
 }
 }  // namespace
 
