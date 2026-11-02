@@ -23,8 +23,11 @@ namespace sp {
 
 class StartEndParser : public StreamParser {
 public:
-    static constexpr std::uint8_t kStartOfFrame = 0x02;
-    static constexpr std::uint8_t kEndOfFrame = 0x03;
+    /* Enumerators instead of static constexpr members: this header is the whole
+       implementation, and in C++14 a static constexpr member that is passed by
+       reference (push_back, operator==) needs an out-of-class definition that a
+       header cannot provide. */
+    enum : std::uint8_t { kStartOfFrame = 0x02, kEndOfFrame = 0x03 };
     // 0x02 + payload + 0x00 0x00 0x03
     static constexpr std::size_t kOverhead = 4;
 
