@@ -66,6 +66,12 @@ public:
     // buildFrame() encodes an outbound payload into a transmittable byte stream.
     // Return non-empty frame on success; empty vector on protocol-level failure
     // (e.g. payload too large). Empty means the frame is invalid, do not send.
+    //
+    // Report a failure with reportError() only when the reason is private to the
+    // protocol and the transport cannot restate it, i.e. a limit encoded in the
+    // framing itself. A payload that merely does not fit max_frame_bytes is the
+    // transport's own budget: return an empty vector silently and let it report
+    // the refusal, so one failure never has two reporters.
     virtual std::vector<uint8_t> buildFrame(const std::vector<uint8_t>& payload) = 0;
 
 protected:

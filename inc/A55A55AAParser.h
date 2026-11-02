@@ -50,7 +50,9 @@ public:
         const size_t kMaxLenField = 0xFFFF;   // LenHi LenLo is 16 bit
 
         // payload.size() + trailer_len must fit in uint16_t (max 0xFFFF).
-        // Check before the static_cast to avoid silent truncation.
+        // Check before the static_cast to avoid silent truncation. This limit is
+        // private to the framing, so the transport cannot restate it and it is
+        // reported here.
         if (payload.size() > kMaxLenField - checksum_trailer_len) {
             std::string detail = "build payload length too large: " + std::to_string(payload.size());
             reportError(ErrorCode::ProtocolError, detail);
@@ -60,8 +62,8 @@ public:
         uint16_t L = static_cast<uint16_t>(payload.size()) + checksum_trailer_len;
         size_t total_len = 4 + L;  // 2 header + 2 len + payload + 3 trailer
         if (total_len > m_max_frame_size) {
-            std::string detail = "build frame length too large: " + std::to_string(total_len);
-            reportError(ErrorCode::ProtocolError, detail);
+            // The budget is the transport's own: it reports the refusal with the
+            // payload size and max_frame_bytes, so nothing is reported here.
             return {};
         }
 
