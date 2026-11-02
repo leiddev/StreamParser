@@ -4,6 +4,9 @@
  * StartEndParser: framing used by TcpServerElement (the legacy "document push"
  * channel), that is  0x02 <payload> 0x00 0x00 0x03.
  *
+ * The frame callback receives the payload only: the start byte and the
+ * terminator are stripped, so it sees exactly what buildFrame() was given.
+ *
  * The channel is send-only from the application point of view: the parser is
  * bound to every accepted session because sp::TcpSessionParserAdapter requires
  * one, and inbound data is only ever used for logging / diagnostics.
@@ -69,7 +72,9 @@ protected:
         const std::size_t n = m_buf.size();
         if (n >= kOverhead &&
             m_buf[n - 3] == 0x00 && m_buf[n - 2] == 0x00 && m_buf[n - 1] == kEndOfFrame) {
-            completeFrame();  // delivers the whole frame, delimiters included
+            // Deliver the payload only, like the other parsers do: the leading
+            // 0x02 and the 00 00 03 terminator are framing, not content.
+            completeFrame(1, n - kOverhead);
             return;
         }
         updateActivity();
