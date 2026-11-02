@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "A55A55AAParser.h"
 #include "StreamParserLog.h"
 #include "Transport.h"
 
@@ -118,7 +119,16 @@ int main(int argc, char* argv[]) {
         }
     };
 
-    transport = CreateTransport(config, ParserFactory(), handler);
+    /* The facade carries no protocol of its own: the demo injects A55A55AA for
+       every link and for the encoder. */
+    const uint32_t    frame_timeout_ms = config.frame_timeout_ms;
+    const std::size_t max_frame_bytes  = config.max_frame_bytes;
+    ParserFactory factory = [frame_timeout_ms, max_frame_bytes](const std::string& tag) {
+        return std::unique_ptr<StreamParser>(
+            new A55A55AAParser(tag, frame_timeout_ms, max_frame_bytes));
+    };
+
+    transport = CreateTransport(config, std::move(factory), handler);
     if (!transport) {
         std::cerr << "cannot create transport" << std::endl;
         return 1;

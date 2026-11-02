@@ -39,7 +39,7 @@ StreamParserDemo/
 │   ├── StreamParser.cc          # 解析器基类实现
 │   ├── TransportImpl.h          # 门面内部基类（asio 细节只在此处出现）
 │   ├── TransportBase.cc         # 公共 io/线程/发送队列实现
-│   ├── TransportFactory.cc      # CreateTransport 与默认解析器工厂
+│   ├── TransportFactory.cc      # CreateTransport（只校验配置，不绑定协议）
 │   ├── TransportSerial.cc       # 串口后端
 │   ├── TransportTcpServer.cc    # TCP 服务器后端
 │   ├── TransportTcpClient.cc    # TCP 客户端后端
@@ -128,7 +128,12 @@ handler.on_link_up   = [](const std::string& tag) { /* 入队 */ };
 handler.on_link_down = [](const std::string& tag, const std::string& why) { /* 入队 */ };
 handler.on_error     = [](const std::string& tag, int code, const std::string& detail) { /* 入队 */ };
 
-auto transport = sp::CreateTransport(cfg, sp::ParserFactory{}, handler);  // 空 -> 默认 A55A55AAParser
+// 协议由宿主注入：门面本身不认识任何具体解析器
+auto factory = [](const std::string& tag) {
+    return std::unique_ptr<sp::StreamParser>(
+        new sp::A55A55AAParser(tag, cfg.frame_timeout_ms, cfg.max_frame_bytes));
+};
+auto transport = sp::CreateTransport(cfg, std::move(factory), handler);
 if (!transport->start()) { /* 配置/绑定失败 */ }
 
 transport->send(tag, payload);        // 按 tag 定位链路，门面负责成帧

@@ -141,12 +141,12 @@ struct TransportHandler {
 // -------------------------------------------------
 // 4. Parser factory
 // -------------------------------------------------
-// One parser per link; `tag` lets a host pick the protocol per link if needed.
+// The host owns the protocol: the facade never names a concrete parser.
+// The factory is called once per link and once for the encoder, whose tag is
+// "<name>#encoder" (or "encoder" when name is empty). Each call must return a
+// fresh parser; `tag` lets a host pick the protocol per link if it needs to.
+// An empty factory is refused by CreateTransport().
 using ParserFactory = std::function<std::unique_ptr<StreamParser>(const std::string& tag)>;
-
-// Default: A55A55AAParser with the given timeout / frame limit.
-ParserFactory DefaultParserFactory(uint32_t         frame_timeout_ms = 300,
-                                   std::size_t      max_frame_bytes  = 10 * 1024);
 
 // -------------------------------------------------
 // 5. The facade
@@ -188,8 +188,9 @@ public:
 // -------------------------------------------------
 // 6. Factory
 // -------------------------------------------------
-// `parser_factory` may be empty: DefaultParserFactory(cfg.frame_timeout_ms,
-// cfg.max_frame_bytes) is used in that case.
+// `parser_factory` is required: it decides the framing on both directions and
+// is the only place a concrete parser is named. Returns nullptr when the
+// factory is empty or the configuration is invalid.
 std::unique_ptr<Transport> CreateTransport(const TransportConfig& cfg,
                                            ParserFactory          parser_factory,
                                            TransportHandler       handler);

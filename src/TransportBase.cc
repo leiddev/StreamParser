@@ -18,12 +18,9 @@ constexpr int kWriteFailed = 1;   // on_error code: the OS refused a frame
 }  // namespace
 
 TransportBase::TransportBase(TransportConfig cfg, ParserFactory factory, TransportHandler handler)
-    : cfg_(std::move(cfg)), handler_(std::move(handler)) {
-    if (factory) {
-        factory_ = std::move(factory);
-    } else {
-        factory_ = DefaultParserFactory(cfg_.frame_timeout_ms, cfg_.max_frame_bytes);
-    }
+    : cfg_(std::move(cfg)), factory_(std::move(factory)), handler_(std::move(handler)) {
+    /* CreateTransport() already rejects an empty factory; keep the encoder null
+       when that guarantee is bypassed so start() can report it. */
     const std::string encoder_tag = cfg_.name.empty() ? "encoder" : cfg_.name + "#encoder";
     encoder_ = createParser(encoder_tag);
 }
