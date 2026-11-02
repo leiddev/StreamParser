@@ -123,14 +123,20 @@ private:
                 return;
             }
             asio::ip::udp::endpoint dest;
+            bool                       known = false;
             {
                 std::lock_guard<std::mutex> lock(peers_mutex_);
                 auto it = peers_.find(tag);
-                if (it == peers_.end()) {
-                    done(false, "unknown udp peer " + tag);
-                    return;
+                if (it != peers_.end()) {
+                    dest  = it->second;
+                    known = true;
                 }
-                dest = it->second;
+            }
+            if (!known) {
+                /* Report outside the lock: `done` runs the host's error and
+                   link-down callbacks, and nests link_mutex_ on the way. */
+                done(false, "unknown udp peer " + tag);
+                return;
             }
             adapter->async_send_to(dest, frame, [done](UdpWriteResult result, size_t /*bytes*/,
                                                        const asio::error_code& ec,
