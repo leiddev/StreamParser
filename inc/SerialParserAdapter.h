@@ -118,19 +118,20 @@ public:
     // Encode payload and send asynchronously.
     // Internally calls parser_->buildFrame(payload). If build succeeds (non-empty frame),
     // posts async_write to the io_context executor. If build fails (empty frame), the
-    // callback is NOT invoked and no data is sent.
+    // callback receives SerialWriteResult::InvalidArg and no data is sent.
     void build_and_async_write(const std::vector<uint8_t>& payload, SerialWriteCallback cb = nullptr) {
-        if (parser_) {
-            auto frame = parser_->buildFrame(payload);
-            if (!frame.empty()) {
-                auto frame_ptr = std::make_shared<std::vector<uint8_t>>(std::move(frame));
-                async_write(frame_ptr, std::move(cb));
-            }
-        } else {
-            // Empty frame: fire failure callback if provided
-            if (cb) {
-                cb(SerialWriteResult::InvalidArg, 0, {}, "buildFrame returned empty");
-            }
+        if (!parser_) {
+            return;
+        }
+        auto frame = parser_->buildFrame(payload);
+        if (!frame.empty()) {
+            auto frame_ptr = std::make_shared<std::vector<uint8_t>>(std::move(frame));
+            async_write(frame_ptr, std::move(cb));
+            return;
+        }
+        // Empty frame: fire failure callback if provided
+        if (cb) {
+            cb(SerialWriteResult::InvalidArg, 0, {}, "buildFrame returned empty");
         }
     }
 

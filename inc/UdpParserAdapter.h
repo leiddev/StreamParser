@@ -171,7 +171,7 @@ public:
     // Encode payload and send asynchronously to remote_endpoint_.
     // Internally calls parser_->buildFrame(payload). If build succeeds (non-empty frame),
     // posts async_write to the io_context executor. If build fails (empty frame), the
-    // callback is NOT invoked and no data is sent.
+    // callback receives a failure result and no data is sent.
     void build_and_async_write(const std::vector<uint8_t>& payload,
                                UdpWriteCallback cb = nullptr) {
         auto frame = parser_->buildFrame(payload);
