@@ -1,12 +1,12 @@
-# StreamParserDemo
+# StreamParser
 
-[![CI](https://github.com/leiddev/StreamParserDemo/actions/workflows/ci.yml/badge.svg)](https://github.com/leiddev/StreamParserDemo/actions/workflows/ci.yml)
+[![CI](https://github.com/leiddev/StreamParser/actions/workflows/ci.yml/badge.svg)](https://github.com/leiddev/StreamParser/actions/workflows/ci.yml)
 
 基于 ASIO 的流式数据解析框架，支持串口、TCP、UDP 多种通信方式。
 
 ## 项目概述
 
-StreamParserDemo 是一个轻量级的流数据解析框架，封装了 ASIO 网络库，提供统一的异步 I/O 接口。框架采用**适配器模式**，将底层通信细节与上层业务逻辑解耦，用户只需关注协议解析本身。
+StreamParser 是一个轻量级的流数据解析框架，封装了 ASIO 网络库，提供统一的异步 I/O 接口。框架采用**适配器模式**，将底层通信细节与上层业务逻辑解耦，用户只需关注协议解析本身。
 
 ### 核心特性
 
@@ -443,4 +443,6 @@ ctest --test-dir build --output-on-failure
 
 ## 许可证
 
-本项目仅供学习和参考使用。
+MIT，见 [LICENSE](LICENSE)。可以自由使用、修改、再分发，包括商业用途，只需保留版权声明。
+
+ASIO 以 Boost Software License 1.0 分发，见 `3rdparty/asio/LICENSE_1_0.txt`。
