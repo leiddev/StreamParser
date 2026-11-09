@@ -166,3 +166,29 @@ jobs:
 
       - name: Test (under qemu)
         run: qemu-arm-static -L /usr/arm-linux-gnueabihf ./build-armv7/tests/LogSmokeTest
+
+  # -------------------------------------------------------------------------
+  # Installed package: build, install, then consume it from a separate project
+  # through find_package(sp) -- the way the README tells a downstream to use it.
+  # -------------------------------------------------------------------------
+  package:
+    name: package (install + find_package)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build and install
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DSP_BUILD_EXAMPLES=OFF -DSP_BUILD_TESTS=OFF
+          cmake --build build --parallel "$(nproc)"
+          cmake --install build --prefix "$PWD/install"
+
+      - name: Consume from a separate project
+        run: |
+          cmake -S tests/consumer -B consumer -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$PWD/install"
+          cmake --build consumer --parallel "$(nproc)"
+          ./consumer/consumer
