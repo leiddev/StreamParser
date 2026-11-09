@@ -560,6 +560,10 @@ ctest --test-dir build --output-on-failure
 - 线程库（Linux 上由 CMake 自动加 `Threads::Threads`）
 - **ASIO 随包提供**：仓库内的 `3rdparty/asio/include` 用于构建，`cmake --install` 会把它一并装到 `include/sp/asio`。下游 `find_package(sp)` 时由 `sp::asio` 这个 INTERFACE 目标自动带上 include 路径与编译定义（`ASIO_STANDALONE`、Windows 下的 `_WIN32_WINNT`），不需要自己找 asio，也不会和 Boost 的 asio 冲突。
 
+## 变更记录
+
+见 [CHANGELOG.md](CHANGELOG.md)，版本号遵循语义化版本。
+
 ## 许可证
 
 MIT，见 [LICENSE](LICENSE)。可以自由使用、修改、再分发，包括商业用途，只需保留版权声明
