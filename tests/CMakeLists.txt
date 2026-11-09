@@ -1,3 +1,22 @@
+# Unit tests. Every file is self contained (a check() function and a main()),
+# so there is no test framework to fetch and ctest just runs the binaries.
+
+add_executable(StreamParserTest stream_parser_test.cc)
+target_link_libraries(StreamParserTest PRIVATE sp::core sp::warnings)
+add_test(NAME stream_parser COMMAND StreamParserTest)
+
+# The two example parsers are headers under examples/, so the tests read them
+# from there: they are part of the repository but not of the installed package.
+add_executable(A55A55AAParserTest a55a55aa_parser_test.cc)
+target_include_directories(A55A55AAParserTest PRIVATE ${PROJECT_SOURCE_DIR}/examples)
+target_link_libraries(A55A55AAParserTest PRIVATE sp::core sp::warnings)
+add_test(NAME a55a55aa_parser COMMAND A55A55AAParserTest)
+
+add_executable(StartEndParserTest start_end_parser_test.cc)
+target_include_directories(StartEndParserTest PRIVATE ${PROJECT_SOURCE_DIR}/examples)
+target_link_libraries(StartEndParserTest PRIVATE sp::core sp::warnings)
+add_test(NAME start_end_parser COMMAND StartEndParserTest)
+
 add_executable(LogSmokeTest log_smoke_test.cc)
 target_link_libraries(LogSmokeTest PRIVATE sp::core sp::warnings)
 add_test(NAME log_smoke COMMAND LogSmokeTest)
