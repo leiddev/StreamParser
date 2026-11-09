@@ -20,7 +20,7 @@
  * - Total frame length = 4 + L
  * - After receiving, must verify last two bytes are 0x55 0xAA
 */
-#include "StreamParser.h"
+#include <sp/StreamParser.h>
 #include <cstdint>
 
 namespace sp {

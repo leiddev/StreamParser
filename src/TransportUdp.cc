@@ -14,10 +14,10 @@
 #include <unordered_map>
 #include <utility>
 
-#include "StreamParserLog.h"
+#include <sp/StreamParserLog.h>
 #include "TransportImpl.h"
-#include "UdpParserAdapter.h"
-#include "UdpTypes.h"
+#include <sp/UdpParserAdapter.h>
+#include <sp/UdpTypes.h>
 
 namespace sp {
 namespace detail {

@@ -12,9 +12,9 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include "TcpTypes.h"
-#include "StreamParser.h"
-#include "StreamParserLog.h"
+#include <sp/TcpTypes.h>
+#include <sp/StreamParser.h>
+#include <sp/StreamParserLog.h>
 
 #ifdef __linux__
 #include <netinet/tcp.h>

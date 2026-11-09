@@ -14,10 +14,10 @@
 #include <utility>
 #include <vector>
 
-#include "StreamParserLog.h"
-#include "TcpParserServer.h"
-#include "TcpSessionParserAdapter.h"
-#include "TcpTypes.h"
+#include <sp/StreamParserLog.h>
+#include <sp/TcpParserServer.h>
+#include <sp/TcpSessionParserAdapter.h>
+#include <sp/TcpTypes.h>
 #include "TransportImpl.h"
 
 namespace sp {

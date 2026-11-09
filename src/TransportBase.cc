@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include "StreamParserLog.h"
+#include <sp/StreamParserLog.h>
 
 namespace sp {
 namespace detail {

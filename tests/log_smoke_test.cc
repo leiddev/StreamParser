@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "StreamParserLog.h"
+#include <sp/StreamParserLog.h>
 
 namespace {
 

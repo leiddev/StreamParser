@@ -13,9 +13,9 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include "SerialTypes.h"
-#include "StreamParser.h"
-#include "StreamParserLog.h"
+#include <sp/SerialTypes.h>
+#include <sp/StreamParser.h>
+#include <sp/StreamParserLog.h>
 
 namespace sp {
 

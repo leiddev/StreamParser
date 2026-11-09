@@ -51,7 +51,7 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        run: cmake -S . -B build -A ${{ matrix.arch }} -DCMAKE_CXX_FLAGS="/W3"
+        run: cmake -S . -B build -A ${{ matrix.arch }}
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
@@ -59,7 +59,7 @@ jobs:
           set -o pipefail
           cmake --build build --parallel "$(nproc)" 2>&1 | tee build.log
           # First party code must stay warning free; third party asio noise is ignored.
-          if grep -E "warning:" build.log | grep -qE "/(inc|src|test)/|_main\.cc"; then
+          if grep -E "warning:" build.log | grep -qE "/(include|src|tests|examples)/"; then
             echo "::error::compiler warnings found in project sources"
             grep -E "warning:" build.log || true
             exit 1
@@ -114,7 +114,7 @@ jobs:
         run: |
           set -o pipefail
           cmake --build build --parallel "$(nproc)" 2>&1 | tee build.log
-          if grep -E "warning:" build.log | grep -qE "/(inc|src|test)/|_main\.cc"; then
+          if grep -E "warning:" build.log | grep -qE "/(include|src|tests|examples)/"; then
             echo "::error::compiler warnings found in project sources"
             grep -E "warning:" build.log || true
             exit 1
@@ -152,7 +152,7 @@ jobs:
         run: |
           set -o pipefail
           cmake --build build-armv7 --parallel "$(nproc)" 2>&1 | tee build.log
-          if grep -E "warning:" build.log | grep -qE "/(inc|src|test)/|_main\.cc"; then
+          if grep -E "warning:" build.log | grep -qE "/(include|src|tests|examples)/"; then
             echo "::error::compiler warnings found in project sources"
             grep -E "warning:" build.log || true
             exit 1
@@ -160,9 +160,9 @@ jobs:
 
       - name: Verify target architecture
         run: |
-          file build-armv7/LogSmokeTest
-          file build-armv7/TcpServerDemo | grep -q "ARM" || {
+          file build-armv7/tests/LogSmokeTest
+          file build-armv7/examples/TcpServerDemo | grep -q "ARM" || {
             echo "::error::binaries are not ARM"; exit 1; }
 
       - name: Test (under qemu)
-        run: qemu-arm-static -L /usr/arm-linux-gnueabihf ./build-armv7/LogSmokeTest
+        run: qemu-arm-static -L /usr/arm-linux-gnueabihf ./build-armv7/tests/LogSmokeTest

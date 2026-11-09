@@ -11,9 +11,9 @@
 #include <string>
 #include <utility>
 
-#include "StreamParserLog.h"
-#include "TcpClientParserAdapter.h"
-#include "TcpTypes.h"
+#include <sp/StreamParserLog.h>
+#include <sp/TcpClientParserAdapter.h>
+#include <sp/TcpTypes.h>
 #include "TransportImpl.h"
 
 namespace sp {

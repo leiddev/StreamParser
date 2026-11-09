@@ -1,122 +1,85 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 project(StreamParser VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include(ExternalProject)
-# Include External Project
-include(3rdparty/asio.cmake)
+option(SP_BUILD_EXAMPLES "Build the example programs" ON)
+option(SP_BUILD_TESTS "Build the tests" ON)
 
-add_executable(SerialDemo serial_main.cc)
-add_executable(TcpServerDemo tcp_server_main.cc)
-add_executable(TcpClientDemo tcp_client_main.cc)
-add_executable(UdpDemo udp_main.cc)
-# Transport facade demo: no asio in the program itself.
-add_executable(TransportDemo transport_main.cc)
+# ---------------------------------------------------------------------------
+# Dependencies
+#
+# ASIO is vendored (3rdparty/asio) and header only. It is an INTERFACE target
+# because the transport headers expose asio types, so whoever includes them
+# needs the same include path and the same two defines.
+# ---------------------------------------------------------------------------
+add_library(sp_asio INTERFACE)
+add_library(sp::asio ALIAS sp_asio)
+target_include_directories(sp_asio INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/asio/include>)
+target_compile_definitions(sp_asio INTERFACE ASIO_STANDALONE)
+if(WIN32)
+    target_compile_definitions(sp_asio INTERFACE _WIN32_WINNT=0x0601)
+endif()
 
-# Facade implementation shared by TransportDemo (and by hosts that want it).
-set(SP_TRANSPORT_SOURCES
+find_package(Threads REQUIRED)
+target_link_libraries(sp_asio INTERFACE Threads::Threads)
+
+# Warnings and platform defines for first party code only.
+add_library(sp_warnings INTERFACE)
+add_library(sp::warnings ALIAS sp_warnings)
+if(MSVC)
+    target_compile_options(sp_warnings INTERFACE /W4 /utf-8)
+    target_compile_definitions(sp_warnings INTERFACE
+        WIN32_LEAN_AND_MEAN NOMINMAX
+        _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+else()
+    target_compile_options(sp_warnings INTERFACE -Wall -Wextra)
+    target_compile_definitions(sp_warnings INTERFACE WIN32_LEAN_AND_MEAN NOMINMAX)
+endif()
+
+# ---------------------------------------------------------------------------
+# sp::core -- the parsing core, no third party dependency.
+#
+# StreamParser is the extension point: a downstream class derives from it,
+# implements processByte()/buildFrame() for its own protocol, and hands an
+# instance to a transport through TransportConfig::parser_factory.
+# ---------------------------------------------------------------------------
+add_library(sp_core STATIC src/StreamParser.cc)
+add_library(sp::core ALIAS sp_core)
+set_target_properties(sp_core PROPERTIES EXPORT_NAME core)
+target_include_directories(sp_core PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>)
+target_compile_features(sp_core PUBLIC cxx_std_14)
+target_link_libraries(sp_core PRIVATE sp::warnings)
+
+# ---------------------------------------------------------------------------
+# sp::transport -- the ready made transports, on top of core and ASIO.
+# ---------------------------------------------------------------------------
+add_library(sp_transport STATIC
     src/TransportBase.cc
     src/TransportFactory.cc
     src/TransportSerial.cc
     src/TransportTcpClient.cc
     src/TransportTcpServer.cc
-    src/TransportUdp.cc
-)
-
-if(WIN32)
-    add_definitions(-DWIN32_LEAN_AND_MEAN)
-    add_definitions(-DNOMINMAX)
-else()
-    find_package(Threads REQUIRED)
-endif()
-
-if(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
-    add_compile_options(/source-charset:utf-8)
-    add_compile_options(/execution-charset:utf-8)
-    add_compile_options(-D_CRT_SECURE_NO_WARNINGS)
-    add_compile_options(-D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-target_sources(SerialDemo PRIVATE
-    src/StreamParser.cc
-)
-
-target_sources(TcpServerDemo PRIVATE
-    src/StreamParser.cc
-)
-
-target_sources(TcpClientDemo PRIVATE
-    src/StreamParser.cc
-)
-
-target_sources(UdpDemo PRIVATE
-    src/StreamParser.cc
-)
-
-target_include_directories(SerialDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(SerialDemo asio)
-target_compile_definitions(SerialDemo PRIVATE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
-target_include_directories(TcpServerDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(TcpServerDemo asio)
-target_compile_definitions(TcpServerDemo PRIVATE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
-target_include_directories(TcpClientDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(TcpClientDemo asio)
-target_compile_definitions(TcpClientDemo PRIVATE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
-target_include_directories(UdpDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(UdpDemo asio)
-target_compile_definitions(UdpDemo PRIVATE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
-target_sources(TransportDemo PRIVATE
-    src/StreamParser.cc
-    ${SP_TRANSPORT_SOURCES}
-)
-
-target_include_directories(TransportDemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
-target_link_libraries(TransportDemo asio)
-target_compile_definitions(TransportDemo PRIVATE ASIO_STANDALONE _WIN32_WINNT=0x0601)
-
-
-# Dependency free smoke test for the pluggable logging facility (StreamParserLog.h)
-add_executable(LogSmokeTest test/log_smoke_test.cc)
-target_include_directories(LogSmokeTest PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
+    src/TransportUdp.cc)
+add_library(sp::transport ALIAS sp_transport)
+set_target_properties(sp_transport PROPERTIES EXPORT_NAME transport)
+target_link_libraries(sp_transport PUBLIC sp::core sp::asio PRIVATE sp::warnings)
 
 # ---------------------------------------------------------------------------
-# Tests (ctest --test-dir build -C Release --output-on-failure)
+# Examples (built and tested, never installed) and tests.
 # ---------------------------------------------------------------------------
-enable_testing()
-
-add_test(NAME log_smoke COMMAND LogSmokeTest)
-
-# End-to-end test: start TcpServerDemo, feed it one A5 5A frame, check the frame
-# callback fires. Needs a python 3 interpreter, silently skipped otherwise.
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.12)
-    find_package(Python3 COMPONENTS Interpreter QUIET)
-    set(_sp_python "${Python3_EXECUTABLE}")
-else()
-    find_program(_sp_python NAMES python3 python)
+if(SP_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
-if(_sp_python)
-    add_test(NAME tcp_e2e
-             COMMAND ${_sp_python} ${CMAKE_CURRENT_SOURCE_DIR}/test/e2e_tcp_test.py
-                     $<TARGET_FILE:TcpServerDemo>)
-    set_tests_properties(tcp_e2e PROPERTIES TIMEOUT 90)
-
-    # Same idea for the Transport facade: link up, frame callback, echo back.
-    add_test(NAME transport_e2e
-             COMMAND ${_sp_python} ${CMAKE_CURRENT_SOURCE_DIR}/test/e2e_transport_test.py
-                     $<TARGET_FILE:TransportDemo>)
-    set_tests_properties(transport_e2e PROPERTIES TIMEOUT 120)
-else()
-    message(STATUS "python3 not found, tcp_e2e test disabled")
-    message(STATUS "python3 not found, transport_e2e test disabled")
+if(SP_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
 
-message(STATUS "Build completed for ${CMAKE_SYSTEM_NAME}")
-message(STATUS "C compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "StreamParser ${PROJECT_VERSION} for ${CMAKE_SYSTEM_NAME}")
 message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")

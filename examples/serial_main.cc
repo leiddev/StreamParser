@@ -28,7 +28,7 @@
 #include <memory>
 #include <cstdio>
 #include "A55A55AAParser.h"
-#include "SerialParserAdapter.h"
+#include <sp/SerialParserAdapter.h>
 
 // Every adapter lives in namespace sp.
 using namespace sp;

@@ -20,9 +20,9 @@
 #include <vector>
 #include <functional>
 #include <iostream>
-#include "UdpTypes.h"
-#include "StreamParser.h"
-#include "StreamParserLog.h"
+#include <sp/UdpTypes.h>
+#include <sp/StreamParser.h>
+#include <sp/StreamParserLog.h>
 
 namespace sp {
 

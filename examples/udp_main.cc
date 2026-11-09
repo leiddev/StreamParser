@@ -25,7 +25,7 @@
 #include <vector>
 #include <cstdio>
 #include <asio.hpp>
-#include "UdpParserAdapter.h"
+#include <sp/UdpParserAdapter.h>
 #include "A55A55AAParser.h"
 
 // Every adapter lives in namespace sp.

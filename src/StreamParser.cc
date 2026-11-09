@@ -1,7 +1,7 @@
 /*
  * Leid 2026.7
  */
-#include "StreamParser.h"
+#include <sp/StreamParser.h>
 
 namespace sp {
 

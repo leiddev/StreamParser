@@ -10,7 +10,7 @@
  *
  * Typical usage from the host application:
  *
- *     #include "StreamParserLog.h"
+ *     #include <sp/StreamParserLog.h>
  *
  *     splog::set_callback([](const splog::Record& r) {
  *         my_logger_write(splog::level_name(r.level), r.component, r.message);

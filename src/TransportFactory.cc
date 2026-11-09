@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include "StreamParserLog.h"
+#include <sp/StreamParserLog.h>
 #include "TransportImpl.h"
 
 namespace sp {

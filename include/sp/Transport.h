@@ -42,7 +42,7 @@
 #include <string>
 #include <vector>
 
-#include "StreamParser.h"
+#include <sp/StreamParser.h>
 
 namespace sp {
 

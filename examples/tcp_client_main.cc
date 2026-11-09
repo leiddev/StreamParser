@@ -25,7 +25,7 @@
 #include <vector>
 #include <cstdio>
 #include <asio.hpp>
-#include "TcpClientParserAdapter.h"
+#include <sp/TcpClientParserAdapter.h>
 #include "A55A55AAParser.h"
 
 // Every adapter lives in namespace sp.

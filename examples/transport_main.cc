@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "A55A55AAParser.h"
-#include "StreamParserLog.h"
-#include "Transport.h"
+#include <sp/StreamParserLog.h>
+#include <sp/Transport.h>
 
 using namespace sp;
 

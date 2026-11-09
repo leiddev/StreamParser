@@ -9,9 +9,9 @@
 #include <functional>
 #include <memory>
 #include <iostream>
-#include "TcpTypes.h"
-#include "TcpSessionParserAdapter.h"
-#include "StreamParserLog.h"
+#include <sp/TcpTypes.h>
+#include <sp/TcpSessionParserAdapter.h>
+#include <sp/StreamParserLog.h>
 
 namespace sp {
 

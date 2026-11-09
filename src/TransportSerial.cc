@@ -12,9 +12,9 @@
 #include <string>
 #include <utility>
 
-#include "SerialParserAdapter.h"
-#include "SerialTypes.h"
-#include "StreamParserLog.h"
+#include <sp/SerialParserAdapter.h>
+#include <sp/SerialTypes.h>
+#include <sp/StreamParserLog.h>
 #include "TransportImpl.h"
 
 namespace sp {

@@ -25,9 +25,9 @@
 #include <mutex>
 #include <cstdio>
 #include <asio.hpp>
-#include "TcpParserServer.h"
-#include "TcpSessionParserAdapter.h"
-#include "StreamParserLog.h"
+#include <sp/TcpParserServer.h>
+#include <sp/TcpSessionParserAdapter.h>
+#include <sp/StreamParserLog.h>
 #include "A55A55AAParser.h"
 
 // Every adapter lives in namespace sp.
