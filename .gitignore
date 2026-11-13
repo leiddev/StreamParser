@@ -1,6 +1,7 @@
 # Build directories
 /build/
 /build-test/
+/build-rel/
 /out/
 
 # Visual Studio
