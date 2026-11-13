@@ -572,6 +572,23 @@ set SP_TEST_SERIAL_PORT_PEER=COM2
 # export SP_TEST_SERIAL_PORT=/dev/pts/3 SP_TEST_SERIAL_PORT_PEER=/dev/pts/4
 ```
 
+### 交叉编译（Hi3516CV500 / Hi3516DV300）
+
+`cmake/hi3516-toolchain.cmake` 面向海思 `arm-himix200-linux` 工具链（GCC 6.3，
+Cortex-A7，glibc）。该工具链的瘦身版只保留 softfp，因此固定用
+`-mcpu=cortex-a7 -mfloat-abi=softfp -mfpu=neon-vfpv4`：
+
+```bash
+cmake -S . -B build-arm -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/hi3516-toolchain.cmake
+cmake --build build-arm -j
+```
+
+工具链装在别处时加 `-DHI3516_TOOLCHAIN_DIR=/path/to/arm-himix200-linux`。
+产物是动态链接的 armv7 可执行文件，目标机需要 glibc 与 `libstdc++.so.6`
+（Hi3516 默认镜像自带）。交叉编译只构建，不运行测试——把 `build-arm/tests/`
+下的二进制拷到板子上再跑，串口用例同样用 `SP_TEST_SERIAL_PORT` 启用。
+
 ## 依赖
 
 - C++14 编译器（GCC 5+ / Clang 3.4+ / MSVC 2015+）

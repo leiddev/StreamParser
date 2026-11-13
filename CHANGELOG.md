@@ -17,6 +17,8 @@
   「设备不存在 / 未配置」两条路径在任意平台运行；真实收发用例由
   `SP_TEST_SERIAL_PORT` / `SP_TEST_SERIAL_PORT_PEER` 启用，未设置时跳过
 - `tests/support/TransportTestKit.h`：门面测试共用的回调记录器与测试用解析器
+- `cmake/hi3516-toolchain.cmake`：Hi3516CV500/DV300（Cortex-A7、softfp、glibc）的
+  交叉编译工具链文件，可用 `-DHI3516_TOOLCHAIN_DIR=...` 指定工具链位置
 
 ### Fixed
 
