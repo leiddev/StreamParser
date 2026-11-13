@@ -80,6 +80,7 @@ StreamParser/
 │   ├── log_smoke_test.cc         # 日志设施冒烟测试
 │   ├── transport_facade_test.cc  # 门面可靠性：TCP 服务端/客户端、UDP
 │   ├── transport_serial_test.cc  # 门面可靠性：串口（真实收发需串口对）
+│   ├── transport_keepalive_test.cc # keepalive 选项与 log_link_events
 │   ├── e2e_tcp_test.py           # TCP 端到端测试
 │   ├── e2e_transport_test.py     # 门面层端到端测试
 │   ├── support/FakeTransport.h   # 测试桩（仅测试使用，不是公开 API）
@@ -552,6 +553,12 @@ CI 中会编译并运行：
   `start()` 仍返回 true 并在后台重试（`-4`）。真实收发用例需要一对互通的串口，设置
   `SP_TEST_SERIAL_PORT` 与 `SP_TEST_SERIAL_PORT_PEER`（如 `COM1` / `COM2`）才运行，
   否则打印 SKIP——CI runner 上没有串口对，所以这一步在 CI 里是 SKIP；
+- `transport_keepalive` —— keepalive 与 `log_link_events`：keepalive 的四个参数
+  （`SO_KEEPALIVE`、`TCP_KEEPIDLE`、`TCP_KEEPINTVL`、`TCP_KEEPCNT`）从内核读回比对，
+  并确认开启后收发不受影响；这部分只在 Linux 上做——Windows 的
+  `SIO_KEEPALIVE_VALS` 没有查询接口，如实跳过而不是猜；
+  `log_link_events` 直接对着库自己的日志回调断言：开启时连接/断开各产生一行，
+  关闭时一行都没有，而 `on_link_up` / `on_link_down` 照常触发；
 - `tcp_e2e` —— 启动 `TcpServerDemo`，喂入一个合法 `A5 5A` 帧，校验帧重组回调触发；
 - `transport_e2e` —— 启动 `TransportDemo`，走统一门面验证收发与链路回调。
 

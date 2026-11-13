@@ -38,6 +38,13 @@ target_link_libraries(TransportSerialTest PRIVATE sp::transport sp::warnings)
 add_test(NAME transport_serial COMMAND TransportSerialTest)
 set_tests_properties(transport_serial PROPERTIES TIMEOUT 180)
 
+# keepalive option readback and log_link_events. The readback is Linux only
+# and reports SKIP elsewhere; the rest runs everywhere.
+add_executable(TransportKeepaliveTest transport_keepalive_test.cc)
+target_link_libraries(TransportKeepaliveTest PRIVATE sp::transport sp::warnings)
+add_test(NAME transport_keepalive COMMAND TransportKeepaliveTest)
+set_tests_properties(transport_keepalive PROPERTIES TIMEOUT 180)
+
 # End-to-end tests start an example program, talk to it over a real socket and
 # check the frame callback fires. They need the examples and a python 3
 # interpreter, and are silently skipped when either is missing.
