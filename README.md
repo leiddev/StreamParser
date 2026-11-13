@@ -78,9 +78,12 @@ StreamParser/
 │   ├── a55a55aa_parser_test.cc   # 示例解析器 A55A55AAParser
 │   ├── start_end_parser_test.cc  # 示例解析器 StartEndParser
 │   ├── log_smoke_test.cc         # 日志设施冒烟测试
+│   ├── transport_facade_test.cc  # 门面可靠性：TCP 服务端/客户端、UDP
+│   ├── transport_serial_test.cc  # 门面可靠性：串口（真实收发需串口对）
 │   ├── e2e_tcp_test.py           # TCP 端到端测试
 │   ├── e2e_transport_test.py     # 门面层端到端测试
 │   ├── support/FakeTransport.h   # 测试桩（仅测试使用，不是公开 API）
+│   ├── support/TransportTestKit.h # 门面测试的回调记录器与测试用解析器
 │   └── consumer/                 # 独立工程：用 find_package(sp) 消费安装包
 ├── cmake/
 │   ├── sp-config.cmake.in        # find_package(sp) 的配置模板
@@ -541,6 +544,14 @@ CI 中会编译并运行：
 - `a55a55aa_parser` —— `examples/A55A55AAParser.h`（帧头尾/长度/校验、坏帧恢复）；
 - `start_end_parser` —— `examples/StartEndParser.h`（起止符 + 转义、噪声丢弃）；
 - `log_smoke` —— 日志回调设施（安装/过滤/静音/异常隔离/stderr 兜底）；
+- `transport_facade` —— 门面可靠性：TCP 服务端/客户端的粘包、拆包、帧超时、校验失败、
+  tag 路由、`broadcast()`、发送预算（`-2`）、`max_links`（`-6`）、写失败只报一次、
+  `start()` 失败（`-5`）、重连与空闲超时，以及 UDP 的多 peer 路由、`send_to()`
+  （含主机名解析与 `-7`）、`max_links`。对端用裸 asio socket，不需要演示程序；
+- `transport_serial` —— 串口门面：`device` 为空时 `start()` 失败（`-3`）；设备不存在时
+  `start()` 仍返回 true 并在后台重试（`-4`）。真实收发用例需要一对互通的串口，设置
+  `SP_TEST_SERIAL_PORT` 与 `SP_TEST_SERIAL_PORT_PEER`（如 `COM1` / `COM2`）才运行，
+  否则打印 SKIP——CI runner 上没有串口对，所以这一步在 CI 里是 SKIP；
 - `tcp_e2e` —— 启动 `TcpServerDemo`，喂入一个合法 `A5 5A` 帧，校验帧重组回调触发；
 - `transport_e2e` —— 启动 `TransportDemo`，走统一门面验证收发与链路回调。
 
@@ -552,6 +563,13 @@ CI 中会编译并运行：
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wall -Wextra"
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+
+# 有一对互通串口时，顺带跑串口的真实收发：
+# Windows（COM1 与 COM2 交叉连接）
+set SP_TEST_SERIAL_PORT=COM1
+set SP_TEST_SERIAL_PORT_PEER=COM2
+# Linux（socat 造一对 pty 后填各自的路径）
+# export SP_TEST_SERIAL_PORT=/dev/pts/3 SP_TEST_SERIAL_PORT_PEER=/dev/pts/4
 ```
 
 ## 依赖

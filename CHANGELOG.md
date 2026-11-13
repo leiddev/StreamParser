@@ -5,6 +5,30 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- `tests/transport_facade_test.cc`（ctest `transport_facade`）：进程内驱动四种传输
+  的门面可靠性测试，用裸 asio socket 充当对端，覆盖粘包/拆包、帧超时、校验失败、
+  tag 路由、`broadcast()`、发送预算、`max_links`、写失败只报一次、`start()` 失败、
+  TCP 重连与空闲超时、UDP 多 peer 路由与主机名解析
+- `tests/transport_serial_test.cc`（ctest `transport_serial`）：串口门面测试。
+  「设备不存在 / 未配置」两条路径在任意平台运行；真实收发用例由
+  `SP_TEST_SERIAL_PORT` / `SP_TEST_SERIAL_PORT_PEER` 启用，未设置时跳过
+- `tests/support/TransportTestKit.h`：门面测试共用的回调记录器与测试用解析器
+
+### Fixed
+
+- `TransportBase::start()`：`open()` 失败时从 io 线程回调 `stop()`，自我 join 导致
+  进程挂死。改为在 io 线程上关闭、由调用线程只做 join
+- `TransportBase::stop()`：先释放 work guard 再投递关闭任务，io 线程空闲时
+  `io_context::run()` 立即返回，关闭任务永远不被执行，`stop()` 卡在 join 上。
+  改为先投递、再释放 guard
+- UDP 门面：`port = 0` 时 `link_up` 的 tag 报成 `udp:0` 而不是内核实际分配的端口
+- UDP 门面：主机名解析取第一个结果，可能是 IPv6 而 socket 是 IPv4，发送会无声
+  失败；改为取第一个 IPv4 结果，没有则报 `-7`
+
 ## [1.0.0] - 2026-11-09
 
 首次正式发布。项目由早期的 `StreamParserDemo` 整理为可按第三方库分发的 `StreamParser`。
