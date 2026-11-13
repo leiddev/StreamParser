@@ -204,10 +204,12 @@ transport->stop();                    // 关闭链路并 join io 线程
 | 每链路一个 parser | 解析器带帧缓存与超时状态，因此用 `ParserFactory` 而不是原型克隆 |
 | `max_links` / `max_pending_frames` | 分别用于连接数准入和每链路发送队列的背压（0 表示不限连接数） |
 | `log_link_events` | 是否由门面自己打印链路上下线日志，默认 `true`；宿主若已在 `on_link_up` / `on_link_down` 里记录，可置 `false` 避免同一事件打印两行（启动、错误、重连日志不受影响） |
-| `keep_alive` / `keepalive_idle_seconds` / `keepalive_interval_seconds` / `keepalive_probes` | TCP keepalive（仅 `tcp_server` 的已接受连接与 `tcp_client`），默认关闭 / 30s / 5s / 3 次；用于识别"对端静默消失"（掉电、拔线）——不开启时只能等下一次写失败才能发现。按 socket 逐连接设置（Windows 走 `SIO_KEEPALIVE_VALS`，Linux 走 `TCP_KEEPIDLE/KEEPINTVL/KEEPCNT`） |
+| `keep_alive` / `keepalive_idle_seconds` / `keepalive_interval_seconds` / `keepalive_probes` | TCP keepalive（仅 `tcp_server` 的已接受连接与 `tcp_client`），默认关闭 / 30s / 5s / 3 次；用于识别"对端静默消失"（掉电、拔线）——不开启时只能等下一次写失败才能发现。按 socket 逐连接设置（Windows 走 `SIO_KEEPALIVE_VALS`，Linux 走 `TCP_KEEPIDLE/KEEPINTVL/KEEPCNT`）。某个选项被系统拒绝不会让连接失败，但会记一条 WARN 指明是哪个选项、什么值——避免宿主以为探测开着、实际却只能等写失败 |
 | `link_idle_timeout_ms` | 链路空闲超时：TCP 连接在这么久**没有收到任何字节**就被主动关闭，默认 `0`（关闭）。与 keepalive 互补——只要不发数据也能发现"可达但对端卡死"（重启中的进程、半开代理）；仅 `tcp_server` / `tcp_client` 生效 |
 
 `kind` 与 `tag` 的对应关系：串口用设备名；TCP 服务器用客户端的 `ip:port`；TCP 客户端用服务器 `host:port`；UDP 用对端 `ip:port`（另外还有 `udp:<port>` 代表 socket 自身）。UDP 默认发往最近一次收到数据的对端，`send_to()` 可指定目标。
+
+`links()` 与 `on_link_up` 是同一份内容：凡是 `on_link_up` 报过的 tag，都能在 `links()` 里找到。UDP 的 `udp:<port>` 也在其中，但它不是可发送的目标——`send()` 到它返回 `false`，`broadcast()` 会跳过它，二者都不会因此产生错误回调。
 
 `tests/support/FakeTransport.h` 提供一个 header-only 的测试桩：它记录每次 `send()`/`broadcast()`/`send_to()` 的内容，并支持注入帧、链路上下线、错误以及让 `start()` 失败，便于对业务层做单元测试；它同时也可作为 `Transport` 最小契约的参考实现。它只在 `SP_BUILD_TESTS` 下使用，不随安装包发布。
 

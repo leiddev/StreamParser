@@ -33,6 +33,13 @@
 - UDP 门面：`port = 0` 时 `link_up` 的 tag 报成 `udp:0` 而不是内核实际分配的端口
 - UDP 门面：主机名解析取第一个结果，可能是 IPv6 而 socket 是 IPv4，发送会无声
   失败；改为取第一个 IPv4 结果，没有则报 `-7`
+- UDP 门面：`on_link_up` 报了 `udp:<port>`，`links()` 里却查不到它——socket 自身
+  从未进入链接表。现在它作为「可上报但不可发送」的链接注册：两个接口返回同一份
+  内容，`send()` 到它返回 `false`，`broadcast()` 跳过它，都不会产生错误回调
+- keepalive：`setsockopt`（Linux）与 `WSAIoctl`（Windows）的返回值此前全部丢弃，
+  参数被系统拒绝时配置静默失效。现在每个选项的失败都记一条 WARN，带上选项名与
+  值；`SO_KEEPALIVE` 改用不抛异常的 `set_option` 形式，失败只记日志、不再把
+  异常抛进连接建立流程
 
 ## [1.0.0] - 2026-11-09
 

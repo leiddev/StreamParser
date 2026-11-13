@@ -52,6 +52,11 @@ protected:
             /* port 0 means "let the OS pick": the tag can only carry the real
                port once bind() has returned, not before it. */
             local_tag_ = "udp:" + std::to_string(adapter_->local_port());
+            /* The socket is announced next to its peers, so it has to be in the
+               link table too: a host that sees link_up must find the tag in
+               links(). It is a sink -- nothing is ever sent to the socket
+               itself -- so broadcast() skips it and send() refuses it. */
+            addSinkLink(local_tag_);
             if (config().log_link_events) {
                 SP_LOG_INFO("transport", config().name << ": udp socket bound on port "
                                                        << adapter_->local_port());

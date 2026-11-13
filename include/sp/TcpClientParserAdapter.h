@@ -21,6 +21,8 @@
 #include <sp/StreamParserLog.h>
 
 #ifdef __linux__
+#include <cerrno>
+#include <cstring>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #endif
@@ -389,20 +391,38 @@ private:
     // -------------------------------------------------
     // 6. Keepalive
     // -------------------------------------------------
+    // Same contract as TcpSessionParserAdapter::enable_keepalive(): a socket
+    // that will not take the option must not fail the connection, but it must
+    // not go quiet either, so each failure is logged with its option.
     void enable_keepalive() {
         if (!config_.tcp.enable_keepalive) return;
 
         asio::socket_base::keep_alive option(true);
-        socket_.set_option(option);
+        asio::error_code             ec;
+        socket_.set_option(option, ec);
+        if (ec) {
+            SP_LOG_WARN("tcp-client", "[" << client_tag()
+                                          << "] SO_KEEPALIVE failed: " << ec.message());
+            return;   // the per-socket timers below only make sense once it is on
+        }
 
 #ifdef __linux__
-        int fd = socket_.native_handle();
+        int fd  = socket_.native_handle();
         int val = config_.tcp.keepalive_idle_seconds;
-        ::setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &val, sizeof(val));
+        if (::setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &val, sizeof(val)) != 0) {
+            SP_LOG_WARN("tcp-client", "[" << client_tag() << "] TCP_KEEPIDLE(" << val
+                                          << ") failed: " << std::strerror(errno));
+        }
         val = config_.tcp.keepalive_interval_seconds;
-        ::setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &val, sizeof(val));
+        if (::setsockopt(fd, SOL_TCP, TCP_KEEPINTVL, &val, sizeof(val)) != 0) {
+            SP_LOG_WARN("tcp-client", "[" << client_tag() << "] TCP_KEEPINTVL(" << val
+                                          << ") failed: " << std::strerror(errno));
+        }
         val = config_.tcp.keepalive_probes;
-        ::setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &val, sizeof(val));
+        if (::setsockopt(fd, SOL_TCP, TCP_KEEPCNT, &val, sizeof(val)) != 0) {
+            SP_LOG_WARN("tcp-client", "[" << client_tag() << "] TCP_KEEPCNT(" << val
+                                          << ") failed: " << std::strerror(errno));
+        }
 #endif
 
 #ifdef _WIN32
@@ -416,8 +436,11 @@ private:
             static_cast<ULONG>(config_.tcp.keepalive_interval_seconds * 1000)
         };
         DWORD bytes = 0;
-        ::WSAIoctl(socket_.native_handle(), SIO_KEEPALIVE_VALS,
-                   &k, sizeof(k), nullptr, 0, &bytes, nullptr, nullptr);
+        if (::WSAIoctl(socket_.native_handle(), SIO_KEEPALIVE_VALS,
+                       &k, sizeof(k), nullptr, 0, &bytes, nullptr, nullptr) == SOCKET_ERROR) {
+            SP_LOG_WARN("tcp-client", "[" << client_tag() << "] SIO_KEEPALIVE_VALS failed with "
+                                          << ::WSAGetLastError());
+        }
 #endif
     }
 

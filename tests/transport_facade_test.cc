@@ -1098,9 +1098,8 @@ void test_udp_fixed_peer_is_registered() {
         check(saw_socket, "udp fixed peer: the socket itself still announces link_up");
         check(saw_peer, "udp fixed peer: the peer is tagged with its ip:port");
     }
-    // links() reports the registered destinations. The socket's own tag is
-    // announced through on_link_up but is not a destination, so it is not
-    // counted here.
+    // Everything on_link_up announced has to be findable through links(): the
+    // socket's own tag included, even though nothing is sent to it.
     {
         const std::vector<std::string> tags = f.transport->links();
         bool has_peer = false;
@@ -1108,7 +1107,23 @@ void test_udp_fixed_peer_is_registered() {
             has_peer = has_peer || tag == want;
         }
         check(has_peer, "udp fixed peer: links() lists the configured destination");
-        check(tags.size() == 1, "udp fixed peer: links() holds only the destination");
+        const std::vector<std::string> ups = f.rec.link_ups();
+        check(tags.size() == ups.size(),
+              "udp fixed peer: links() reports exactly what on_link_up announced");
+    }
+
+    // The socket's own tag is listed but is not a destination: a send to it is
+    // refused, and it does not make broadcast() report a failed write.
+    {
+        std::string self_tag;
+        for (const std::string& tag : f.rec.link_ups()) {
+            if (port_from_udp_tag(tag) != 0) {
+                self_tag = tag;
+            }
+        }
+        check(!self_tag.empty(), "udp fixed peer: the socket's own tag was announced");
+        check(!f.transport->send(self_tag, bytes("nowhere")),
+              "udp fixed peer: send() to the socket itself returns false");
     }
 
     // The configured peer is usable without it having sent anything.
@@ -1122,6 +1137,9 @@ void test_udp_fixed_peer_is_registered() {
           "udp fixed peer: broadcast() returns true");
     check(target.receive() == FakeParser::frame(bytes("to-all")),
           "udp fixed peer: broadcast reaches the configured destination");
+    sleep_ms(100);
+    check(f.rec.error_count() == 0,
+          "udp fixed peer: the socket link produces no write error");
 }
 
 void test_udp_fixed_peer_host_name() {
@@ -1161,7 +1179,7 @@ void test_udp_unresolvable_fixed_peer() {
     check(f.rec.wait_error_code(kResolveFailed),
           "udp fixed peer: the unresolvable destination is reported with code -7");
     check(f.rec.wait_link_ups(1), "udp fixed peer: the socket itself is still up");
-    check(f.transport->links().empty(),
+    check(f.transport->links().size() == 1,
           "udp fixed peer: no peer link is added for a failed lookup");
 }
 
@@ -1181,8 +1199,8 @@ void test_udp_incomplete_fixed_peer_is_ignored() {
         sleep_ms(200);
         check(f.rec.link_up_count() == 1,
               "udp fixed peer: a host without a port registers no peer");
-        check(f.transport->links().empty(),
-              "udp fixed peer: links() has no destination to report");
+        check(f.transport->links().size() == 1,
+              "udp fixed peer: links() has the socket and nothing else");
     }
     {
         sp::TransportConfig cfg = udp_config(0);

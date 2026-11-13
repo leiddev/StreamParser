@@ -55,12 +55,19 @@ protected:
 
     // One logical link: a device, an accepted client, a server connection or
     // a UDP peer. The writer is set once, when the link is created.
+    //
+    // A link with `writable == false` is listed and announced like any other,
+    // but nothing can be sent to it: it names something the transport reports
+    // on rather than a destination. The UDP socket's own tag is the one such
+    // link today. broadcast() skips them and send() refuses them, instead of
+    // recording an error for a write that could never succeed.
     struct Link {
         std::string       tag;
         Writer            writer;
         std::deque<Frame> tx;         // encoded frames waiting for the OS
-        bool              writing = false;
-        bool              up      = false;
+        bool              writing  = false;
+        bool              up       = false;
+        bool              writable = true;
     };
     using LinkPtr = std::shared_ptr<Link>;
 
@@ -88,6 +95,9 @@ protected:
 
     // ---- link table ----
     LinkPtr              addLink(const std::string& tag, Writer writer);
+    // Adds a link that is reported (links(), on_link_up) but cannot be written
+    // to: it names the transport itself rather than a destination.
+    LinkPtr              addSinkLink(const std::string& tag);
     // Removes the link and reports whether it was still present: the caller that
     // gets true owns the link-down event, so a write failure followed by the
     // socket error that reports the same disconnect does not notify the host twice.

@@ -339,6 +339,44 @@ void test_keepalive_off_leaves_the_default() {
           "keepalive off: SO_KEEPALIVE stays off");
 }
 
+// A value the kernel refuses must not fail the connection and must not pass in
+// silence: the socket keeps working and the host is told which option it lost.
+void test_keepalive_rejected_option_is_reported() {
+    AdapterProbe probe;
+    check(probe.connect(), "keepalive rejected: a loopback socket pair is connected");
+
+    LogCapture log;
+
+    sp::TcpAdapterConfig cfg;
+    cfg.enable_keepalive           = true;
+    cfg.keepalive_idle_seconds     = -1;   // EINVAL on Linux
+    cfg.keepalive_interval_seconds = 4;
+    cfg.keepalive_probes           = 6;
+    check(probe.start(cfg, "ka"), "keepalive rejected: the adapter still takes the socket");
+
+    std::size_t warns = 0;
+    {
+        const std::vector<LogCapture::Line> lines = log.lines();
+        for (const LogCapture::Line& line : lines) {
+            if (line.level == splog::Level::warn &&
+                line.message.find("TCP_KEEPIDLE") != std::string::npos) {
+                ++warns;
+            }
+        }
+    }
+    check(warns >= 1, "keepalive rejected: the refused idle value is logged as a warning");
+    check(log.mentioning("TCP_KEEPIDLE(-1)") >= 1,
+          "keepalive rejected: the warning names the option and the value");
+
+    // The other two options were still accepted: only the bad one is lost.
+    check(read_int_option(probe.probe_fd, SOL_TCP, TCP_KEEPINTVL) == 4,
+          "keepalive rejected: the valid interval is still applied");
+    check(read_int_option(probe.probe_fd, SOL_TCP, TCP_KEEPCNT) == 6,
+          "keepalive rejected: the valid probe count is still applied");
+    check(read_int_option(probe.probe_fd, SOL_SOCKET, SO_KEEPALIVE) == 1,
+          "keepalive rejected: keepalive itself stays on");
+}
+
 #else
 
 void test_keepalive_options_are_applied() {
@@ -346,6 +384,10 @@ void test_keepalive_options_are_applied() {
 }
 
 void test_keepalive_off_leaves_the_default() {
+    skip("keepalive option readback is Linux only");
+}
+
+void test_keepalive_rejected_option_is_reported() {
     skip("keepalive option readback is Linux only");
 }
 
@@ -450,6 +492,7 @@ int main() {
     std::cout << "== keepalive ==" << std::endl;
     test_keepalive_options_are_applied();
     test_keepalive_off_leaves_the_default();
+    test_keepalive_rejected_option_is_reported();
     test_keepalive_does_not_break_traffic();
 
     std::cout << "== log_link_events ==" << std::endl;

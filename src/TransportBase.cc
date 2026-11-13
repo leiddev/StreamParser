@@ -227,6 +227,9 @@ bool TransportBase::send(const std::string& tag, const std::vector<uint8_t>& pay
         if (it == links_.end()) {
             return false;
         }
+        if (!it->second->writable) {
+            return false;   // reported, but not a destination
+        }
         if (it->second->tx.size() >= cfg_.max_pending_frames) {
             SP_LOG_WARN("transport", "link " << tag << ": send queue full, frame dropped");
             return false;
@@ -254,6 +257,9 @@ bool TransportBase::broadcast(const std::vector<uint8_t>& payload) {
     {
         std::lock_guard<std::mutex> lock(link_mutex_);
         for (auto& kv : links_) {
+            if (!kv.second->writable) {
+                continue;   // reported, but not a destination
+            }
             if (kv.second->tx.size() >= cfg_.max_pending_frames) {
                 SP_LOG_WARN("transport", "link " << kv.first << ": send queue full, frame dropped");
                 continue;
@@ -358,6 +364,17 @@ TransportBase::LinkPtr TransportBase::addLink(const std::string& tag, Writer wri
     auto link = std::make_shared<Link>();
     link->tag = tag;
     link->writer = std::move(writer);
+    {
+        std::lock_guard<std::mutex> lock(link_mutex_);
+        links_[tag] = link;
+    }
+    return link;
+}
+
+TransportBase::LinkPtr TransportBase::addSinkLink(const std::string& tag) {
+    auto link = std::make_shared<Link>();
+    link->tag      = tag;
+    link->writable = false;
     {
         std::lock_guard<std::mutex> lock(link_mutex_);
         links_[tag] = link;
