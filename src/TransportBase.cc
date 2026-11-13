@@ -79,14 +79,44 @@ bool TransportBase::start() {
             emitError(cfg_.name, -1, "open failed: unknown exception");
             ok = false;
         }
+        /* Report the result before closing: close() may destroy adapters whose
+           destructors run under this very promise. */
         promise.set_value(ok);
+        if (!ok) {
+            /* stop() would join this thread from itself; shut it down here and
+               let start() only do the join. */
+            stopFromIo();
+        }
     });
 
-    if (!future.get()) {
-        stop();
+    const bool opened = future.get();
+    if (!opened) {
+        joinIoThread();
         return false;
     }
     return true;
+}
+
+void TransportBase::stopFromIo() {
+    stopping_ = true;
+    if (guard_) {
+        guard_->reset();
+    }
+    shutdownOnIo();
+}
+
+void TransportBase::joinIoThread() {
+    if (thread_.joinable()) {
+        thread_.join();
+    }
+    running_      = false;
+    io_thread_id_ = std::thread::id{};
+    stopping_     = false;
+    if (cfg_.name.empty()) {
+        SP_LOG_DEBUG("transport", "stopped");
+    } else {
+        SP_LOG_INFO("transport", cfg_.name << ": stopped");
+    }
 }
 
 void TransportBase::stop() {
@@ -104,9 +134,6 @@ void TransportBase::stop() {
     }
 
     stopping_ = true;
-    if (guard_) {
-        guard_->reset();
-    }
 
     std::promise<void> promise;
     std::future<void>  future = promise.get_future();
@@ -114,16 +141,17 @@ void TransportBase::stop() {
         shutdownOnIo();
         promise.set_value();
     });
+
+    /* Release the work guard only after the shutdown is queued: when the io
+       thread has nothing else to do, run() returns the moment the guard goes
+       away, and a task posted afterwards would never be picked up. */
+    if (guard_) {
+        guard_->reset();
+    }
+
     future.wait();
 
-    thread_.join();
-    running_ = false;
-    io_thread_id_ = std::thread::id{};
-    if (cfg_.name.empty()) {
-        SP_LOG_DEBUG("transport", "stopped");
-    } else {
-        SP_LOG_INFO("transport", cfg_.name << ": stopped");
-    }
+    joinIoThread();
 }
 
 bool TransportBase::is_running() const {

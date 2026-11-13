@@ -117,6 +117,10 @@ private:
     void runIo();
     void flush(const LinkPtr& link);
     void shutdownOnIo();
+    // Takes the io thread down without joining it. Runs on the io thread, where
+    // stop() cannot: a failed start() is discovered there.
+    void stopFromIo();
+    void joinIoThread();
 
     TransportConfig  cfg_;
     ParserFactory    factory_;

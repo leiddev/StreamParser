@@ -49,6 +49,9 @@ protected:
                               (detail.empty() ? ec.message() : detail));
                 return;
             }
+            /* port 0 means "let the OS pick": the tag can only carry the real
+               port once bind() has returned, not before it. */
+            local_tag_ = "udp:" + std::to_string(adapter_->local_port());
             if (config().log_link_events) {
                 SP_LOG_INFO("transport", config().name << ": udp socket bound on port "
                                                        << adapter_->local_port());
@@ -169,7 +172,7 @@ private:
     void resolveAndRegister(const std::string& host, uint16_t port, const Frame& frame = nullptr) {
         auto resolver = std::make_shared<asio::ip::udp::resolver>(io());
         resolver->async_resolve(host, std::to_string(port),
-                                [this, resolver, frame](const asio::error_code& ec,
+                                [this, resolver, frame, host](const asio::error_code& ec,
                                                         const asio::ip::udp::resolver::results_type&
                                                             results) {
             if (ec || results.empty()) {
@@ -178,7 +181,22 @@ private:
                               (ec ? ec.message() : std::string("no result")));
                 return;
             }
-            const asio::ip::udp::endpoint peer = results.begin()->endpoint();
+            /* The socket is IPv4, so an IPv6 answer ("localhost" resolves to
+               ::1 first on many hosts) cannot be used: take the first IPv4
+               address instead of failing on a v6 endpoint. */
+            asio::ip::udp::endpoint peer;
+            bool                    found = false;
+            for (auto it = results.begin(); it != results.end(); ++it) {
+                if (it->endpoint().address().is_v4()) {
+                    peer  = it->endpoint();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                emitError(config().name, -7, "cannot resolve udp peer: no IPv4 address for " + host);
+                return;
+            }
             const std::string             tag  = peerTag(peer);
             if (frame) {
                 pushAndFlush(findLink(tag), frame);

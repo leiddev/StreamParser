@@ -21,6 +21,14 @@ add_executable(LogSmokeTest log_smoke_test.cc)
 target_link_libraries(LogSmokeTest PRIVATE sp::core sp::warnings)
 add_test(NAME log_smoke COMMAND LogSmokeTest)
 
+# The facade tests drive sp::transport in-process: the transport under test on
+# one side, a bare asio socket standing in for the peer on the other. They need
+# no example program and no python, so they run wherever the library builds.
+add_executable(TransportFacadeTest transport_facade_test.cc)
+target_link_libraries(TransportFacadeTest PRIVATE sp::transport sp::warnings)
+add_test(NAME transport_facade COMMAND TransportFacadeTest)
+set_tests_properties(transport_facade PROPERTIES TIMEOUT 180)
+
 # End-to-end tests start an example program, talk to it over a real socket and
 # check the frame callback fires. They need the examples and a python 3
 # interpreter, and are silently skipped when either is missing.
