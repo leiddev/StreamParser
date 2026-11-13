@@ -12,7 +12,8 @@
 - `tests/transport_facade_test.cc`（ctest `transport_facade`）：进程内驱动四种传输
   的门面可靠性测试，用裸 asio socket 充当对端，覆盖粘包/拆包、帧超时、校验失败、
   tag 路由、`broadcast()`、发送预算、`max_links`、写失败只报一次、`start()` 失败、
-  TCP 重连与空闲超时、UDP 多 peer 路由与主机名解析
+  TCP 重连与空闲超时、UDP 多 peer 路由与主机名解析、UDP `peer_host`/`peer_port`
+  固定目标的自动注册与解析失败处理
 - `tests/transport_serial_test.cc`（ctest `transport_serial`）：串口门面测试。
   「设备不存在 / 未配置」两条路径在任意平台运行；真实收发用例由
   `SP_TEST_SERIAL_PORT` / `SP_TEST_SERIAL_PORT_PEER` 启用，未设置时跳过

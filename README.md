@@ -548,7 +548,9 @@ CI 中会编译并运行：
 - `transport_facade` —— 门面可靠性：TCP 服务端/客户端的粘包、拆包、帧超时、校验失败、
   tag 路由、`broadcast()`、发送预算（`-2`）、`max_links`（`-6`）、写失败只报一次、
   `start()` 失败（`-5`）、重连与空闲超时，以及 UDP 的多 peer 路由、`send_to()`
-  （含主机名解析与 `-7`）、`max_links`。对端用裸 asio socket，不需要演示程序；
+  （含主机名解析与 `-7`）、`max_links`、`peer_host`/`peer_port` 固定目标
+  （启动时自动注册为链接，可直接 `send`/`broadcast`；解析失败报 `-7`；
+  只配了主机或只配了端口时什么都不注册）。对端用裸 asio socket，不需要演示程序；
 - `transport_serial` —— 串口门面：`device` 为空时 `start()` 失败（`-3`）；设备不存在时
   `start()` 仍返回 true 并在后台重试（`-4`）。真实收发用例需要一对互通的串口，设置
   `SP_TEST_SERIAL_PORT` 与 `SP_TEST_SERIAL_PORT_PEER`（如 `COM1` / `COM2`）才运行，

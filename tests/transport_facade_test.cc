@@ -1064,6 +1064,140 @@ void test_udp_large_datagram() {
     }
 }
 
+// -------------------------------------------------
+// UDP: a fixed destination configured ahead of time
+// -------------------------------------------------
+// peer_host / peer_port name a destination the transport registers on its own
+// once it is bound, without waiting for that peer to send anything first.
+void test_udp_fixed_peer_is_registered() {
+    PeerIo peer_io;
+
+    // The destination exists before the transport starts, so nothing but the
+    // configuration can have registered it.
+    UdpPeer target(peer_io.io());
+
+    sp::TransportConfig cfg = udp_config(0);
+    cfg.peer_host           = "127.0.0.1";
+    cfg.peer_port           = target.port();
+
+    Facade f;
+    check(f.build(cfg), "udp fixed peer: transport built with peer_host/peer_port");
+    check(f.transport->start(), "udp fixed peer: start() succeeds");
+
+    const std::string want = "127.0.0.1:" + std::to_string(target.port());
+    check(f.rec.wait_link_ups(2),
+          "udp fixed peer: the configured destination is announced as a link");
+    {
+        const std::vector<std::string> ups = f.rec.link_ups();
+        bool saw_socket = false;
+        bool saw_peer   = false;
+        for (const std::string& tag : ups) {
+            saw_socket = saw_socket || port_from_udp_tag(tag) != 0;
+            saw_peer   = saw_peer || tag == want;
+        }
+        check(saw_socket, "udp fixed peer: the socket itself still announces link_up");
+        check(saw_peer, "udp fixed peer: the peer is tagged with its ip:port");
+    }
+    // links() reports the registered destinations. The socket's own tag is
+    // announced through on_link_up but is not a destination, so it is not
+    // counted here.
+    {
+        const std::vector<std::string> tags = f.transport->links();
+        bool has_peer = false;
+        for (const std::string& tag : tags) {
+            has_peer = has_peer || tag == want;
+        }
+        check(has_peer, "udp fixed peer: links() lists the configured destination");
+        check(tags.size() == 1, "udp fixed peer: links() holds only the destination");
+    }
+
+    // The configured peer is usable without it having sent anything.
+    check(f.transport->send(want, bytes("hello-fixed")),
+          "udp fixed peer: send() to the configured tag returns true");
+    check(target.receive() == FakeParser::frame(bytes("hello-fixed")),
+          "udp fixed peer: the configured destination receives the frame");
+    check(f.rec.wait_sent(1), "udp fixed peer: on_sent fires for it");
+
+    check(f.transport->broadcast(bytes("to-all")),
+          "udp fixed peer: broadcast() returns true");
+    check(target.receive() == FakeParser::frame(bytes("to-all")),
+          "udp fixed peer: broadcast reaches the configured destination");
+}
+
+void test_udp_fixed_peer_host_name() {
+    PeerIo peer_io;
+
+    UdpPeer target(peer_io.io());
+
+    // A host name goes through the asynchronous resolver, not make_address.
+    sp::TransportConfig cfg = udp_config(0);
+    cfg.peer_host           = "localhost";
+    cfg.peer_port           = target.port();
+
+    Facade f;
+    check(f.build(cfg), "udp fixed peer: transport built with a host name");
+    check(f.transport->start(), "udp fixed peer: start() succeeds with a host name");
+
+    const std::string want = "127.0.0.1:" + std::to_string(target.port());
+    check(f.rec.wait_link_ups(2),
+          "udp fixed peer: the host name is resolved and registered");
+    check(f.transport->send(want, bytes("named")),
+          "udp fixed peer: send() to the resolved tag returns true");
+    check(target.receive() == FakeParser::frame(bytes("named")),
+          "udp fixed peer: the resolved destination receives the frame");
+}
+
+void test_udp_unresolvable_fixed_peer() {
+    PeerIo peer_io;
+
+    sp::TransportConfig cfg = udp_config(0);
+    cfg.peer_host           = "no-such-host.invalid";
+    cfg.peer_port           = 9;
+
+    Facade f;
+    check(f.build(cfg), "udp fixed peer: transport built with an unresolvable host");
+    check(f.transport->start(),
+          "udp fixed peer: an unresolvable destination does not make start() fail");
+    check(f.rec.wait_error_code(kResolveFailed),
+          "udp fixed peer: the unresolvable destination is reported with code -7");
+    check(f.rec.wait_link_ups(1), "udp fixed peer: the socket itself is still up");
+    check(f.transport->links().empty(),
+          "udp fixed peer: no peer link is added for a failed lookup");
+}
+
+void test_udp_incomplete_fixed_peer_is_ignored() {
+    PeerIo peer_io;
+
+    // A host without a port, or a port without a host, is not a destination:
+    // both have to be set before the transport registers anything.
+    {
+        sp::TransportConfig cfg = udp_config(0);
+        cfg.peer_host           = "127.0.0.1";   // port left at 0
+
+        Facade f;
+        check(f.build(cfg), "udp fixed peer: transport built with a host and no port");
+        check(f.transport->start(), "udp fixed peer: host-without-port still starts");
+        check(f.rec.wait_link_ups(1), "udp fixed peer: the socket announces itself");
+        sleep_ms(200);
+        check(f.rec.link_up_count() == 1,
+              "udp fixed peer: a host without a port registers no peer");
+        check(f.transport->links().empty(),
+              "udp fixed peer: links() has no destination to report");
+    }
+    {
+        sp::TransportConfig cfg = udp_config(0);
+        cfg.peer_port           = 9;             // host left empty
+
+        Facade f;
+        check(f.build(cfg), "udp fixed peer: transport built with a port and no host");
+        check(f.transport->start(), "udp fixed peer: port-without-host still starts");
+        check(f.rec.wait_link_ups(1), "udp fixed peer: the socket announces itself");
+        sleep_ms(200);
+        check(f.rec.link_up_count() == 1,
+              "udp fixed peer: a port without a host registers no peer");
+    }
+}
+
 }  // namespace
 
 int main() {
@@ -1096,6 +1230,10 @@ int main() {
     test_udp_send_to();
     test_udp_max_links();
     test_udp_large_datagram();
+    test_udp_fixed_peer_is_registered();
+    test_udp_fixed_peer_host_name();
+    test_udp_unresolvable_fixed_peer();
+    test_udp_incomplete_fixed_peer_is_ignored();
 
     if (g_failures != 0) {
         std::cout << g_failures << " check(s) failed" << std::endl;
