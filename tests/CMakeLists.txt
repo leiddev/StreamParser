@@ -29,6 +29,15 @@ target_link_libraries(TransportFacadeTest PRIVATE sp::transport sp::warnings)
 add_test(NAME transport_facade COMMAND TransportFacadeTest)
 set_tests_properties(transport_facade PROPERTIES TIMEOUT 180)
 
+# Serial needs a real device pair (or a pty pair) on the machine running the
+# test. The missing-device paths run everywhere; the round-trip cases are
+# enabled by setting both ports, e.g. -E SP_TEST_SERIAL_PORT=COM1
+# -E SP_TEST_SERIAL_PORT_PEER=COM2.
+add_executable(TransportSerialTest transport_serial_test.cc)
+target_link_libraries(TransportSerialTest PRIVATE sp::transport sp::warnings)
+add_test(NAME transport_serial COMMAND TransportSerialTest)
+set_tests_properties(transport_serial PROPERTIES TIMEOUT 180)
+
 # End-to-end tests start an example program, talk to it over a real socket and
 # check the frame callback fires. They need the examples and a python 3
 # interpreter, and are silently skipped when either is missing.
